@@ -1,29 +1,14 @@
-# Importamos 'firebase_admin' porque es la librería oficial que permite a nuestro código de Python comunicarse con la plataforma de Firebase.
-import firebase_admin 
-
-# De 'firebase_admin' traemos 'credentials' para poder comprobar nuestra identidad usando el archivo de seguridad JSON que descargamos.
-from firebase_admin import credentials 
-
-# También traemos 'firestore' porque es el tipo específico de base de datos (rápida y en la nube) que usaremos para guardar los turnos.
-from firebase_admin import firestore 
-
 # De la librería incorporada 'datetime' traemos 'datetime' (para crear y leer fechas) y 'timedelta' (para poder sumar o restar días fácilmente).
 from datetime import datetime, timedelta 
 
-# Creamos una variable llamada 'cred' que lee nuestro archivo secreto de Google Cloud para darnos permisos de administrador en la base de datos.
-cred = credentials.Certificate('ruta/a/tu/archivo-clave.json') 
-
-# Encendemos (inicializamos) la conexión principal con Firebase usando las credenciales que acabamos de cargar en el paso anterior.
-firebase_admin.initialize_app(cred) 
-
-# Creamos un cliente de Firestore (lo llamamos 'db' por "database") que será nuestra herramienta principal para enviar los datos a la nube.
-db = firestore.client() 
+# Creamos una lista vacía que funcionará como base de datos en memoria para que puedas probar el código en Google Colab.
+turnos_guardados = []
 
 # Definimos nuestra función principal llamada 'registrar_turno' que necesita recibir dos cosas: el nombre del 'barbero' y la 'fecha_str' (fecha en texto).
 def registrar_turno(barbero, fecha_str):
     
-    # Le indicamos a Python en qué formato específico escribiremos la fecha: "%Y" (Año), "%m" (mes), "%d" (día), separados por guiones.
-    formato_fecha = "%Y-%m-%d" 
+    # Le indicamos a Python en qué formato específico escribiremos la fecha: "%d" (día), "%m" (mes), "%Y" (Año), separados por barras.
+    formato_fecha = "%d/%m/%Y" 
     
     # Iniciamos un bloque 'try'. Significa "intenta hacer esto". Lo usamos por si el usuario escribe mal la fecha y ocurre un error.
     try:
@@ -35,7 +20,7 @@ def registrar_turno(barbero, fecha_str):
     except ValueError:
         
         # Imprimimos un mensaje de error amigable en la consola explicando al usuario cómo debe ser escrito el texto.
-        print("Error: Por favor usa el formato AAAA-MM-DD (Ejemplo: 2024-05-15) para la fecha.")
+        print("Error: Por favor usa el formato DD/MM/AAAA (Ejemplo: 15/05/2024) para la fecha.")
         
         # Usamos 'return' para detener la ejecución de toda la función aquí mismo, ya que sin una fecha correcta no podemos continuar.
         return
@@ -72,13 +57,39 @@ def registrar_turno(barbero, fecha_str):
         "fecha": fecha_elegida
     }
     
-    # Le decimos a nuestra base de datos ('db') que busque la colección o carpeta 'turnos' y que añada ('add') nuestro nuevo diccionario.
-    db.collection('turnos').add(datos_turno)
+    # Guardamos el diccionario en nuestra lista (base de datos en memoria) para simular el almacenamiento.
+    turnos_guardados.append(datos_turno)
     
-    # Finalmente, imprimimos un mensaje de éxito en pantalla para confirmar que todo salió bien y el turno ya está en la nube.
+    # Finalmente, imprimimos un mensaje de éxito en pantalla para confirmar que todo salió bien.
     print(f"¡Éxito! El turno con el barbero {barbero} para la fecha {fecha_str} ha sido registrado.")
 
 
-# EJEMPLOS DE USO:
-# Para usar este sistema, solo debes borrar el símbolo # (para descomentar la línea) e invocar la función con los datos reales.
-# registrar_turno("Carlos", "2026-06-25")
+# SISTEMA INTERACTIVO:
+# Este bucle permite que el programa funcione continuamente en la consola de Visual Studio Code.
+if __name__ == "__main__":
+    print("--- BIENVENIDO AL SISTEMA DE TURNOS ---")
+    while True:
+        print("\n¿Qué deseas hacer?")
+        print("1. Registrar un turno")
+        print("2. Ver turnos guardados")
+        print("3. Salir")
+        opcion = input("Elige una opción (1, 2 o 3): ")
+        
+        if opcion == "3":
+            print("Saliendo del sistema. ¡Hasta luego!")
+            break
+        elif opcion == "1":
+            nombre_barbero = input("Ingresa el nombre del barbero: ")
+            fecha_turno = input("Ingresa la fecha del turno (formato DD/MM/AAAA): ")
+            registrar_turno(nombre_barbero, fecha_turno)
+        elif opcion == "2":
+            print("\n--- TURNOS REGISTRADOS ---")
+            if not turnos_guardados:
+                print("Aún no hay turnos registrados en el sistema.")
+            else:
+                # Recorremos la lista y mostramos cada turno con un formato de texto amigable
+                for i, turno in enumerate(turnos_guardados, 1):
+                    fecha_bonita = turno['fecha'].strftime("%d/%m/%Y")
+                    print(f"{i}. Barbero: {turno['barbero']} - Fecha: {fecha_bonita}")
+        else:
+            print("Opción no válida. Por favor, ingresa 1, 2 o 3.")
