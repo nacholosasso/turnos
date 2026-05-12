@@ -1,4 +1,5 @@
 import boto3
+import json
 import uuid
 from datetime import datetime, timedelta 
 
@@ -40,7 +41,7 @@ def registrar_turno(barbero, fecha_str):
     id_turno = str(uuid.uuid4())
     
     datos_turno = {
-        "Samm5061$": id_turno,
+        "id_turno": id_turno,
         "barbero": barbero,
         "fecha": fecha_str # Es mejor guardar la fecha como texto en DynamoDB
     }
@@ -56,8 +57,16 @@ def lambda_handler(event, context):
     Esta es la función principal que AWS Lambda ejecutará.
     'event' contiene los datos que recibe la función (ej. desde una web).
     """
-    barbero = event.get("barbero")
-    fecha = event.get("fecha")
+    
+    # Si la petición viene desde una web (API Gateway/Function URL), los datos vienen como texto JSON dentro de "body"
+    if "body" in event and event["body"]:
+        body = json.loads(event["body"])
+        barbero = body.get("barbero")
+        fecha = body.get("fecha")
+    else:
+        # Para pruebas directas desde la consola de Lambda
+        barbero = event.get("barbero")
+        fecha = event.get("fecha")
     
     if not barbero or not fecha:
         return {
