@@ -2,6 +2,7 @@ import boto3
 import json
 import uuid
 from datetime import datetime, timedelta 
+from boto3.dynamodb.conditions import Attr
 
 # Conectamos con el servicio DynamoDB
 # (Asegúrate de crear una tabla llamada 'TurnosBarberia' en la consola de AWS)
@@ -41,7 +42,15 @@ def registrar_turno(barbero, fecha_str, hora_str, telefono, email):
     if fecha_hora_elegida.minute not in (0, 30):
         return "Error: Los turnos solo se pueden reservar cada 30 minutos (ej. 10:00 o 10:30)."
         
-    # 5. Si todas las validaciones pasan, preparamos los datos para DynamoDB
+    # 5. Validar que el turno no esté ocupado
+    turnos_existentes = tabla_turnos.scan(
+        FilterExpression=Attr('fecha').eq(fecha_str) & Attr('hora').eq(hora_str) & Attr('barbero').eq(barbero)
+    )
+    
+    if turnos_existentes.get('Items'):
+        return f"Error: {barbero} ya tiene un turno reservado el {fecha_str} a las {hora_str} hs. Por favor, elige otro horario."
+
+    # 6. Si todas las validaciones pasan, preparamos los datos para DynamoDB
     # DynamoDB requiere un identificador único (Partition Key). Usamos uuid para generarlo.
     id_turno = str(uuid.uuid4())
     
@@ -54,10 +63,10 @@ def registrar_turno(barbero, fecha_str, hora_str, telefono, email):
         "email": email
     }
     
-    # 6. Guardamos el nuevo turno directamente en nuestra tabla
+    # 7. Guardamos el nuevo turno directamente en nuestra tabla
     tabla_turnos.put_item(Item=datos_turno)
     
-    # 7. Enviar correo de confirmación
+    # 8. Enviar correo de confirmación
     # IMPORTANTE: Reemplaza este correo por el tuyo propio (el que autorizaremos en AWS)
     correo_remitente = "nacholosasso@hotmail.com" 
     

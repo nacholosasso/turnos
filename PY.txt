@@ -1,0 +1,11 @@
+--- DEPLOY FRONTEND (Subir index.html a Amazon S3) ---
+
+& "C:\Users\ilosasso\Desktop\Programacion\WPy64-31241\python-3.12.4.amd64\python.exe" -m awscli s3 cp index.html s3://turnos-barberia-ls
+
+
+--- DEPLOY BACKEND (Subir turnos.py a AWS Lambda) ---
+
+
+Compress-Archive -Path turnos.py -DestinationPath turnos.zip -Force
+
+& "C:\Users\ilosasso\Desktop\Programacion\WPy64-31241\python-3.12.4.amd64\python.exe" -m awscli lambda update-function-code --function-name SistemaDeTurnos --zip-file fileb://turnos.zip
