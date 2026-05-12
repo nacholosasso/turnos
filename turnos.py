@@ -1,7 +1,11 @@
+import boto3
+import uuid
 from datetime import datetime, timedelta 
 
-# Lista que simula una base de datos para guardar los turnos
-turnos_guardados = []
+# Conectamos con el servicio DynamoDB
+# (Asegúrate de crear una tabla llamada 'TurnosBarberia' en la consola de AWS)
+dynamodb = boto3.resource('dynamodb')
+tabla_turnos = dynamodb.Table('TurnosBarberia')
 
 def registrar_turno(barbero, fecha_str):
     """
@@ -13,71 +17,67 @@ def registrar_turno(barbero, fecha_str):
     try:
         fecha_elegida = datetime.strptime(fecha_str, formato_fecha)
     except ValueError:
-        print("Error: Por favor usa el formato DD/MM/AAAA (Ejemplo: 15/05/2024) para la fecha.")
-        return # Sale de la función si hay error
+        return "Error: Por favor usa el formato DD/MM/AAAA (Ejemplo: 15/05/2024) para la fecha."
         
     # Obtener la fecha actual para hacer validaciones
-    fecha_actual = datetime.now()
+    # Usamos .date() para comparar solo los días y evitar problemas con las horas
+    fecha_actual = datetime.now().date()
+    fecha_elegida_date = fecha_elegida.date()
     
     # Calcular el límite de tiempo permitido (3 meses o 90 días en el futuro)
     limite_tres_meses = fecha_actual + timedelta(days=90)
     
     # 2. Validar que la fecha elegida no sea mayor al límite permitido
-    if fecha_elegida > limite_tres_meses:
-        print("Error: No puedes sacar un turno a más de 3 meses de la fecha actual.")
-        return
+    if fecha_elegida_date > limite_tres_meses:
+        return "Error: No puedes sacar un turno a más de 3 meses de la fecha actual."
         
     # 3. Validar que la fecha no sea un día en el pasado
-    if fecha_elegida < fecha_actual:
-        print("Error: La fecha elegida ya ha pasado.")
-        return
+    if fecha_elegida_date < fecha_actual:
+        return "Error: La fecha elegida ya ha pasado."
         
-    # 4. Si todas las validaciones pasan, se crea un diccionario con los datos del turno
+    # 4. Si todas las validaciones pasan, preparamos los datos para DynamoDB
+    # DynamoDB requiere un identificador único (Partition Key). Usamos uuid para generarlo.
+    id_turno = str(uuid.uuid4())
+    
     datos_turno = {
+        "Samm5061$": id_turno,
         "barbero": barbero,
-        "fecha": fecha_elegida
+        "fecha": fecha_str # Es mejor guardar la fecha como texto en DynamoDB
     }
     
-    # Se añade el nuevo turno a nuestra lista (base de datos)
-    turnos_guardados.append(datos_turno)
+    # 5. Guardamos el nuevo turno directamente en nuestra tabla
+    tabla_turnos.put_item(Item=datos_turno)
     
-    print(f"¡Éxito! El turno con el barbero {barbero} para la fecha {fecha_str} ha sido registrado.")
+    return f"¡Éxito! El turno con el barbero {barbero} para la fecha {fecha_str} ha sido registrado."
 
 
-# SISTEMA INTERACTIVO
-# Este bloque se ejecuta si corremos el archivo directamente en la consola
-if __name__ == "__main__":
-    print("--- BIENVENIDO AL SISTEMA DE TURNOS ---")
+def lambda_handler(event, context):
+    """
+    Esta es la función principal que AWS Lambda ejecutará.
+    'event' contiene los datos que recibe la función (ej. desde una web).
+    """
+    barbero = event.get("barbero")
+    fecha = event.get("fecha")
     
-    # Bucle infinito para mantener el menú abierto hasta que el usuario decida salir
-    while True:
-        print("\n¿Qué deseas hacer?")
-        print("1. Registrar un turno")
-        print("2. Ver turnos guardados")
-        print("3. Salir")
+    if not barbero or not fecha:
+        return {
+            "statusCode": 400,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Methods": "OPTIONS,POST"
+            },
+            "body": "Falta el barbero o la fecha en el evento enviado."
+        }
         
-        opcion = input("Elige una opción (1, 2 o 3): ")
-        
-        if opcion == "3":
-            print("Saliendo del sistema. ¡Hasta luego!")
-            break
-            
-        elif opcion == "1":
-            nombre_barbero = input("Ingresa el nombre del barbero: ")
-            fecha_turno = input("Ingresa la fecha del turno (formato DD/MM/AAAA): ")
-            registrar_turno(nombre_barbero, fecha_turno)
-            
-        elif opcion == "2":
-            print("\n--- TURNOS REGISTRADOS ---")
-            if not turnos_guardados:
-                print("Aún no hay turnos registrados en el sistema.")
-            else:
-                # Recorre la lista de turnos y muestra cada uno.
-                # enumerate(..., 1) sirve para numerar la lista empezando por el 1.
-                for i, turno in enumerate(turnos_guardados, 1):
-                    # Volvemos a transformar la fecha en texto con un buen formato
-                    fecha_bonita = turno['fecha'].strftime("%d/%m/%Y")
-                    print(f"{i}. Barbero: {turno['barbero']} - Fecha: {fecha_bonita}")
-                    
-        else:
-            print("Opción no válida. Por favor, ingresa 1, 2 o 3.")
+    resultado = registrar_turno(barbero, fecha)
+    
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Methods": "OPTIONS,POST"
+        },
+        "body": resultado
+    }
