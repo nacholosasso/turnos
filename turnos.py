@@ -8,9 +8,12 @@ from datetime import datetime, timedelta
 dynamodb = boto3.resource('dynamodb')
 tabla_turnos = dynamodb.Table('TurnosBarberia')
 
-def registrar_turno(barbero, fecha_str, hora_str):
+# Conectamos con el servicio de correos de AWS (Simple Email Service)
+ses = boto3.client('ses', region_name='us-east-1')
+
+def registrar_turno(barbero, fecha_str, hora_str, telefono, email):
     """
-    Registra un nuevo turno verificando fecha y hora válidas (Zona Horaria Argentina).
+    Registra un nuevo turno verificando fecha y hora válidas, y envía un correo.
     """
     formato_fecha_hora = "%d/%m/%Y %H:%M" 
     
@@ -46,13 +49,35 @@ def registrar_turno(barbero, fecha_str, hora_str):
         "id_turno": id_turno,
         "barbero": barbero,
         "fecha": fecha_str,
-        "hora": hora_str
+        "hora": hora_str,
+        "telefono": telefono,
+        "email": email
     }
     
     # 6. Guardamos el nuevo turno directamente en nuestra tabla
     tabla_turnos.put_item(Item=datos_turno)
     
-    return f"¡Éxito! El turno con {barbero} para el {fecha_str} a las {hora_str} hs ha sido registrado."
+    # 7. Enviar correo de confirmación
+    # IMPORTANTE: Reemplaza este correo por el tuyo propio (el que autorizaremos en AWS)
+    correo_remitente = "TU_CORREO_AQUI@gmail.com" 
+    
+    try:
+        ses.send_email(
+            Source=correo_remitente,
+            Destination={'ToAddresses': [email]},
+            Message={
+                'Subject': {'Data': 'Confirmación de tu turno - The Barber Shop'},
+                'Body': {
+                    'Text': {'Data': f'¡Hola!\n\nTu turno con {barbero} para el {fecha_str} a las {hora_str} hs ha sido confirmado con éxito.\n\nTe esperamos,\nThe Barber Shop.'}
+                }
+            }
+        )
+        mensaje_correo = " y te hemos enviado un correo de confirmación."
+    except Exception as e:
+        print("Error al enviar el correo:", e)
+        mensaje_correo = " (El turno se guardó, pero hubo un error al enviar el correo. Verifica tu configuración de SES)."
+
+    return f"¡Éxito! El turno con {barbero} para el {fecha_str} a las {hora_str} hs ha sido registrado{mensaje_correo}"
 
 
 def lambda_handler(event, context):
@@ -67,19 +92,23 @@ def lambda_handler(event, context):
         barbero = body.get("barbero")
         fecha = body.get("fecha")
         hora = body.get("hora")
+        telefono = body.get("telefono")
+        email = body.get("email")
     else:
         # Para pruebas directas desde la consola de Lambda
         barbero = event.get("barbero")
         fecha = event.get("fecha")
         hora = event.get("hora")
+        telefono = event.get("telefono")
+        email = event.get("email")
     
-    if not barbero or not fecha or not hora:
+    if not barbero or not fecha or not hora or not telefono or not email:
         return {
             "statusCode": 400,
-            "body": "Falta el barbero, la fecha o la hora en los datos enviados."
+            "body": "Faltan datos obligatorios en el formulario (barbero, fecha, hora, teléfono o email)."
         }
         
-    resultado = registrar_turno(barbero, fecha, hora)
+    resultado = registrar_turno(barbero, fecha, hora, telefono, email)
     
     return {
         "statusCode": 200,
