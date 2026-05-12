@@ -6,45 +6,69 @@
     <title>Turnos Barbería</title>
     <style>
         body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #121212; color: #ffffff;
+            font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, sans-serif; 
+            background: linear-gradient(135deg, #121212 0%, #1f1c18 100%);
+            color: #ffffff;
             display: flex; justify-content: center; align-items: center; 
             height: 100vh; margin: 0;
         }
         .formulario { 
-            background-color: #1e1e1e; padding: 30px; 
-            border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            width: 100%; max-width: 350px; text-align: center;
+            background-color: #1a1a1a; padding: 35px 30px; 
+            border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            width: 90%; max-width: 380px; text-align: center;
+            border-top: 4px solid #d4af37; /* Toque dorado premium */
         }
-        h2 { margin-top: 0; color: #f39c12; }
+        h2 { margin-top: 0; color: #d4af37; letter-spacing: 1px; font-size: 1.8em; margin-bottom: 5px; }
+        .subtitle { color: #888; font-size: 0.9em; margin-bottom: 25px; margin-top: 0; }
         label { display: block; text-align: left; margin: 15px 0 5px; font-size: 0.9em; color: #bbb; }
-        input { 
+        input, select { 
             width: 100%; padding: 12px; margin-bottom: 10px; 
             border: 1px solid #333; border-radius: 8px; 
             background-color: #2b2b2b; color: white; box-sizing: border-box;
+            font-family: inherit; font-size: 1em; color-scheme: dark;
         }
-        input:focus { border-color: #f39c12; outline: none; }
+        input:focus, select:focus { border-color: #d4af37; outline: none; box-shadow: 0 0 5px rgba(212, 175, 55, 0.3); }
+        /* Modificar el ícono del calendario para que se adapte al diseño oscuro */
+        ::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.8; }
+        ::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+        
         button { 
             width: 100%; padding: 12px; 
-            background-color: #f39c12; color: #121212; 
+            background: linear-gradient(135deg, #d4af37 0%, #b5952f 100%);
+            color: #121212; 
             border: none; border-radius: 8px; font-weight: bold; font-size: 1em;
-            cursor: pointer; margin-top: 15px; transition: 0.3s;
+            cursor: pointer; margin-top: 20px; transition: 0.3s transform, 0.3s box-shadow;
         }
-        button:hover { background-color: #e67e22; }
-        #mensaje { margin-top: 20px; font-weight: bold; min-height: 20px; color: #4caf50;}
+        button:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
+        }
+        #mensaje { margin-top: 20px; font-weight: bold; min-height: 20px; font-size: 0.95em; }
+        .exito { color: #4caf50; }
+        .error { color: #ff5252; }
     </style>
 </head>
 <body>
 
     <div class="formulario">
-        <h2>Reservar Turno</h2>
+        <h2>💈 The Barber Shop</h2>
+        <p class="subtitle">Reserva tu turno en segundos</p>
         
         <label for="barbero">Nombre del Barbero:</label>
-        <input type="text" id="barbero" placeholder="Ej. Juan">
+        <select id="barbero">
+            <option value="Juan">Juan</option>
+            <option value="Marcos">Marcos</option>
+            <option value="Alejo">Alejo</option>
+        </select>
         
-        <label for="fecha">Fecha (DD/MM/AAAA):</label>
-        <!-- Usamos text para que coincida con el formato estricto que espera tu código Python -->
-        <input type="text" id="fecha" placeholder="Ej. 15/05/2026">
+        <label for="fecha">Elige el Día:</label>
+        <!-- input type="date" despliega el calendario en celulares de forma nativa -->
+        <input type="date" id="fecha">
+        
+        <label for="hora">Elige la Hora:</label>
+        <select id="hora">
+            <!-- Las opciones se cargarán con JavaScript -->
+        </select>
         
         <button onclick="enviarTurno()">Confirmar Turno</button>
         
@@ -52,18 +76,62 @@
     </div>
 
     <script>
+        // --- CONFIGURACIÓN INICIAL DEL CALENDARIO Y HORARIOS ---
+        window.onload = function() {
+            // 1. Cargar las horas (cada 30 min desde 09:00 hasta 20:00)
+            const horaSelect = document.getElementById('hora');
+            for (let h = 9; h <= 20; h++) {
+                const horaStr = h.toString().padStart(2, '0');
+                horaSelect.innerHTML += `<option value="${horaStr}:00">${horaStr}:00</option>`;
+                if (h !== 20) { // Evitar crear la opción 20:30 si la última es 20:00
+                    horaSelect.innerHTML += `<option value="${horaStr}:30">${horaStr}:30</option>`;
+                }
+            }
+
+            // 2. Configurar límites del Calendario
+            const fechaInput = document.getElementById('fecha');
+            
+            // Función para dar formato (YYYY-MM-DD) requerido por los input de tipo Date
+            function formatearFechaHTML(fecha) {
+                const y = fecha.getFullYear();
+                const m = String(fecha.getMonth() + 1).padStart(2, '0');
+                const d = String(fecha.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+            
+            const hoy = new Date();
+            fechaInput.min = formatearFechaHTML(hoy); // Bloquear días en el pasado
+            
+            const maxDate = new Date();
+            maxDate.setDate(hoy.getDate() + 30);
+            fechaInput.max = formatearFechaHTML(maxDate); // Límite de 30 días
+        };
+
         async function enviarTurno() {
             // 1. Recogemos los datos que escribió el usuario
             const barbero = document.getElementById('barbero').value;
-            const fecha = document.getElementById('fecha').value;
+            const fechaRaw = document.getElementById('fecha').value;
+            const hora = document.getElementById('hora').value;
             const mensajeEl = document.getElementById('mensaje');
             
-            mensajeEl.innerText = "Enviando...";
+            if (!fechaRaw) {
+                mensajeEl.className = 'error';
+                mensajeEl.innerText = "Por favor, selecciona una fecha en el calendario.";
+                return;
+            }
+
+            mensajeEl.className = '';
+            mensajeEl.innerText = "Procesando reserva...";
+
+            // Convertimos la fecha del formato HTML (YYYY-MM-DD) al formato de tu Python (DD/MM/AAAA)
+            const [yyyy, mm, dd] = fechaRaw.split('-');
+            const fechaFormateada = `${dd}/${mm}/${yyyy}`;
 
             // 2. Preparamos el paquete de datos
             const datos = {
                 barbero: barbero,
-                fecha: fecha
+                fecha: fechaFormateada,
+                hora: hora
             };
 
             // 3. Tu URL de AWS Lambda
@@ -82,11 +150,18 @@
                 // 5. Leemos la respuesta de tu código Python
                 const resultadoText = await respuesta.text();
                 
-                // 6. Mostramos el resultado en la pantalla
+                // Evaluamos si devolvió éxito o error para asignarle color
+                if (resultadoText.includes("¡Éxito!")) {
+                    mensajeEl.className = 'exito';
+                } else {
+                    mensajeEl.className = 'error';
+                }
+                
                 mensajeEl.innerText = resultadoText;
                 
             } catch (error) {
                 console.error("Error en la conexión:", error);
+                mensajeEl.className = 'error';
                 mensajeEl.innerText = "Hubo un error al conectar con el servidor.";
             }
         }
