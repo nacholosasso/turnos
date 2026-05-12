@@ -71,11 +71,6 @@ def lambda_handler(event, context):
     if not barbero or not fecha:
         return {
             "statusCode": 400,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Headers": "Content-Type",
-                "Access-Control-Allow-Methods": "OPTIONS,POST"
-            },
             "body": "Falta el barbero o la fecha en el evento enviado."
         }
         
@@ -83,10 +78,5 @@ def lambda_handler(event, context):
     
     return {
         "statusCode": 200,
-        "headers": {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "Content-Type",
-            "Access-Control-Allow-Methods": "OPTIONS,POST"
-        },
         "body": resultado
     }
