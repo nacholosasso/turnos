@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turnos Barbería</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 50px; text-align: center; }
+        .formulario { max-width: 300px; margin: auto; padding: 20px; border: 1px solid #ccc; border-radius: 10px; }
+        input { width: 90%; padding: 10px; margin: 10px 0; }
+        button { padding: 10px 20px; background-color: #28a745; color: white; border: none; cursor: pointer; border-radius: 5px; }
+        button:hover { background-color: #218838; }
+    </style>
+</head>
+<body>
+
+    <div class="formulario">
+        <h2>Reservar Turno</h2>
+        
+        <label for="barbero">Nombre del Barbero:</label>
+        <input type="text" id="barbero" placeholder="Ej. Juan">
+        
+        <label for="fecha">Fecha (DD/MM/AAAA):</label>
+        <!-- Usamos text para que coincida con el formato estricto que espera tu código Python -->
+        <input type="text" id="fecha" placeholder="Ej. 15/05/2026">
+        
+        <button onclick="enviarTurno()">Confirmar Turno</button>
+        
+        <p id="mensaje"></p>
+    </div>
+
+    <script>
+        async function enviarTurno() {
+            // 1. Recogemos los datos que escribió el usuario
+            const barbero = document.getElementById('barbero').value;
+            const fecha = document.getElementById('fecha').value;
+            const mensajeEl = document.getElementById('mensaje');
+            
+            mensajeEl.innerText = "Enviando...";
+
+            // 2. Preparamos el paquete de datos
+            const datos = {
+                barbero: barbero,
+                fecha: fecha
+            };
+
+            // 3. Tu URL de AWS Lambda
+            const urlAWS = "https://elujxi76xlncqqtjvqgujk5abm0ewoik.lambda-url.us-east-1.on.aws/";
+
+            try {
+                // 4. Hacemos la petición a AWS Lambda
+                const respuesta = await fetch(urlAWS, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(datos)
+                });
+
+                // 5. Leemos la respuesta de tu código Python
+                const resultadoText = await respuesta.text();
+                
+                // 6. Mostramos el resultado en la pantalla
+                mensajeEl.innerText = resultadoText;
+                
+            } catch (error) {
+                console.error("Error en la conexión:", error);
+                mensajeEl.innerText = "Hubo un error al conectar con el servidor.";
+            }
+        }
+    </script>
+
+</body>
+</html>
