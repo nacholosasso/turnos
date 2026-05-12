@@ -59,7 +59,7 @@ def registrar_turno(barbero, fecha_str, hora_str, telefono, email):
     
     # 7. Enviar correo de confirmación
     # IMPORTANTE: Reemplaza este correo por el tuyo propio (el que autorizaremos en AWS)
-    correo_remitente = "TU_CORREO_AQUI@gmail.com" 
+    correo_remitente = "nacholosasso@hotmail.com" 
     
     try:
         ses.send_email(
